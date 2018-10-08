@@ -1,0 +1,54 @@
+---
+title: "Question4"
+author: "Niloo sokhandan"
+date: "Oct 5, 2018"
+output: word_document
+---
+
+# Question: Is a user that must call-in more likely to produce a higher chargeback rate(CHARGEBACKs/REBILLs)?
+
+*Loading the required libraries:*
+```{r}
+library(readr)
+library(dplyr)
+library(BSDA)
+```
+
+*Loading saved "data.RData" data frame*
+```{r}
+load("data.RData")
+```
+
+*Grouping data by sample_id (each sample_id appears only once)*
+```{r}
+data_grouped=summarise(group_by(data, sample_id, transaction_type, test_group))
+```
+#Summarising the data from data_grouped data frame to present:
+
+* The number of rebill cases in test group
+* The number of chargeback cases in test group
+* The chargeback/rebill ratio in test group
+* The number of rebill cases in control group
+* The number of chargeback cases in control group
+* The chargeback/rebill ratio in control group
+
+#Table 1
+```{r echo=FALSE}
+Summary_Question4=summarise(group_by(data),
+            Nbr_REBILL_test_group        =nrow(data_grouped[(data_grouped$transaction_type=="REBILL") & (data_grouped$test_group==1),]),         
+            Nbr_CHARGEBACK_test_group    =nrow(data_grouped[(data_grouped$transaction_type=="CHARGEBACK") & (data_grouped$test_group==1),]),     
+            RATIO_test_group             =Nbr_CHARGEBACK_test_group/Nbr_REBILL_test_group,                        
+            Nbr_REBILL_control_group     =nrow(data_grouped[(data_grouped$transaction_type=="REBILL") & (data_grouped$test_group==0),]),
+            Nbr_CHARGEBACK_control_group =nrow(data_grouped[(data_grouped$transaction_type=="CHARGEBACK") & (data_grouped$test_group==0),]),     
+            RATIO_control_group          =Nbr_CHARGEBACK_control_group/Nbr_REBILL_control_group)
+library(knitr)
+kable(Summary_Question4)
+```
+
+*Printing the result:*
+```{r echo=FALSE}
+ifelse(Summary_Question4$RATIO_test_group>Summary_Question4$RATIO_control_group, "The answer to Question 4 is YES","The answer to Question 4 is NO")
+```
+
+#Insight:
+*The results of table 1 shows that user that must call-in is more likely to produce a lower chargeback rate (CHARGEBACKs/REBILLs) copmared to a user that cancel through the website, which means that user that must call-in is more likely to get rebilled that charged back.

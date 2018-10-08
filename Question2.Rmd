@@ -1,0 +1,83 @@
+---
+title: "Question2"
+author: "Niloo sokhandan"
+date: "Oct 5, 2018"
+output: word_document
+---
+
+# Question: Is a user that must call-in to cancel more likely to generate at least 1 addition REBILL?
+
+*Loading the required libraries:*
+```{r}
+library(readr)
+library(dplyr)
+library(BSDA)
+```
+
+*Loading saved "data.RData" data frame*
+```{r}
+load("data.RData")
+```
+
+*Importing testSamples.CSV file and store it as tS*
+```{r}
+tS <- read_csv("testSamples.csv")
+```
+
+*Grouping data by sample_id (each sample_id appears only once)*
+```{r}
+data_grouped=summarise(group_by(data, sample_id, transaction_type, test_group))
+```
+
+*Creating a table to fill with the results of the probability to generate at least 1 addition REBILL in test group and control group*
+
+#Table 1
+```{r echo=FALSE}
+Summary_Question2=summarise(group_by(data_grouped),                          P_test_group=100*sum(data_grouped$transaction_type=="REBILL" & data_grouped$test_group==1)/nrow(data_grouped),   
+P_control_group=100*sum(data_grouped$transaction_type=="REBILL" & data_grouped$test_group==0)/nrow(data_grouped)) 
+library(knitr)
+kable(Summary_Question2)
+```
+
+*Printing the result*
+```{r echo=FALSE}
+ifelse(Summary_Question2$P_test_group>Summary_Question2$P_control_group, "The answer to Question 2 is YES","The answer to Question 2 is NO")
+```
+
+#Calculating the statisticl significancy of the results
+
+*Keeping columns 1, 4 and 5 of the "data" data frame and removing the rest*
+```{r}
+data=data[c(1,4,5)]
+```
+*Calculating the totla amount transacted per user in each test groups*
+```{r}
+DATA=aggregate(data$transaction_amount, by=list(sample_id=data$sample_id),  FUN=sum)
+```
+*Renaming the 2nd column of DATA data frame*
+```{r}
+colnames(DATA)[2] <- "transaction_amount"
+```
+*Joining DATA data frame to tS data frame by commun field (sample_id)*
+```{r}
+DATA=merge(x = DATA, y = tS, by = "sample_id", all.x = TRUE)
+```
+*Extracting data for Control group*
+```{r}
+Ctrl=subset(DATA, test_group==0)
+```
+*Extracting data for test group*
+```{r}
+Test=subset(DATA, test_group==1)
+```
+*Z.test to calculate the statistical significance level of the results*
+
+# Table 2
+```{r}
+z.test(Ctrl$transaction_amount, y = Test$transaction_amount, alternative = "greater", mu = 0, sigma.x = sd(Ctrl$transaction_amount),
+       sigma.y = sd(Test$transaction_amount), conf.level = 0.95)
+```
+
+# Insight:
+* Based on table 1, the probability to generate at least 1 addition REBILL is 57% for users cancelling over the phone and 34.5% for users cancelling over the website. so encouraging the users to cancel over the phone increase the chance of rebilling them.
+* The results of table 2 shows that we are 95% certain that the claim above is true and valid. 

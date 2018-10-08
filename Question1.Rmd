@@ -1,0 +1,136 @@
+---
+title: "Question1"
+author: "Niloo sokhandan"
+date: "Oct 5, 2018"
+output: word_document
+---
+# Question: What is the approximate probability distribution between the test group and the control group
+
+*Loading the required libraries:*
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(BSDA)
+```
+
+*Importing testSamples.CSV file and store it as tS:*
+```{r}
+tS <- read_csv("testSamples.csv")
+```
+*Importing transData.CSV file and store it as tD:*
+```{r}
+tD <- read_csv("transData.csv")
+```
+**Cleaning data :**
+*Replacing probable negative transaction amount values for REBILL by NA:*
+```{r}
+tD[tD$transaction_type=="REBILL" & tD$transaction_amount <0]<- NA
+```
+*Replacing probable positive transaction amount values for REFUND and ECHARGABLE by NA:*
+```{r}
+tD[tD$transaction_type!="REBILL" & tD$transaction_amount >0]<- NA
+```
+*Removing Not Avaialble (NA) data :*
+```{r}
+tS=na.omit(tS)
+tD=na.omit(tD)
+```
+
+*Joining tD data frame to tS data frame by commun field (sample_id):*
+```{r}
+data=merge(x = tD, y = tS, by = "sample_id", all.x = TRUE)
+```
+
+*Saving the data in a data frame named "data.RData":*
+```{r}
+save(data, file = "data.RData")
+```
+
+*Changing the title of the 5th column:*
+```{r}
+colnames(data)[5] <- "Group"
+```
+*Recoding the Group field values:*
+```{r}
+data$Group=recode(data$Group,"0"="Control group","1"="Test group")
+```
+
+*Plot 1: Plotting Transcation amount probability distribution for each of the transaction types:*
+```{r echo=FALSE}
+ThemeMain<-theme(title =element_text(size=9, face='bold'),
+                 axis.title.x = element_text(size=9,color='black',face='bold'),
+                 axis.title.y = element_text(size=9,color='black',face='bold')
+)
+
+library(ggplot2)
+plot1<-ggplot(data, aes(x=transaction_amount, fill=Group)) +
+  geom_histogram(aes(y=..density..), binwidth=2, position=position_jitter(0.1), alpha=0.4)+
+    ggtitle("Transcation amount probability distribution")+
+  scale_x_continuous("Transaction amount ($)") + 
+  scale_y_continuous("Probability (%)") +
+  facet_grid(. ~ transaction_type)+
+  ThemeMain
+  plot1
+```
+
+*Keeping columns 1, 4 and 5 of the "data" data frame and removing the rest*
+```{r}
+data=data[c(1,4,5)]
+```
+*Calculating the totla amount transacted per user in each test groups:*
+```{r}
+DATA=aggregate(data$transaction_amount, by=list(sample_id=data$sample_id),  FUN=sum)
+```
+
+*Renaming the 2nd column of DATA data frame:*
+```{r}
+colnames(DATA)[2] <- "transaction_amount"
+```
+
+*Joining DATA data frame to tS data frame by commun field (sample_id):*
+```{r}
+DATA=merge(x = DATA, y = tS, by = "sample_id", all.x = TRUE)
+```
+
+*Renaming the 3rd column of DATA data frame:*
+```{r}
+colnames(DATA)[3] <- "Group"
+```
+
+*Recoding the Group field values:*
+```{r}
+DATA$Group=recode(DATA$Group,"0"="Control group","1"="Test group")
+```
+
+*Plot 2: Plotting the Net Transcation amount probability distribution per user:*
+```{r echo=FALSE}
+library(ggplot2)
+plot2<-ggplot(DATA, aes(x=transaction_amount, fill=Group)) +
+  geom_histogram(aes(y=..density..), binwidth=5, position="dodge", alpha=0.7) +
+      ggtitle("Net Transcation amount probability distribution per user")+
+  scale_x_continuous("Transaction amount ($)") + 
+  scale_y_continuous("Probability (%)")+
+  ThemeMain
+  plot2
+```
+*Extracting data for Control group*
+```{r}
+Ctrl=subset(DATA, Group=="Control group")
+```
+*Extracting data for test group*
+```{r}
+Test=subset(DATA, Group=="Test group")
+```
+*Z.test to calculate the statistical significance level of the results*
+
+# Table 1
+```{r}
+z.test(Ctrl$transaction_amount, y = Test$transaction_amount, alternative = "greater", mu = 0, sigma.x = sd(Ctrl$transaction_amount),
+       sigma.y = sd(Test$transaction_amount), conf.level = 0.95)
+```
+
+#Insight:
+* Based on plot 1, the test group (users only cancelling by calling in) get rebilled for higher amount compared to the control group (users cancelling using a web form); yet users cancelling by calling-in are more probable to get charged back or refunded for higher amount.*
+* Plot 2 shows that the net transactions (recharge+rebill+refund) of the users cancelling over the phone is higher compared to the users cancelling on the website for values under 150$, whereas users that cancel over the web form ar more probable to have net transactions higher than 150$.
+* The results of table 1 shows that we are 95% certain that the claim above is true and valid. 
